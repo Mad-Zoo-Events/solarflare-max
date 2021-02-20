@@ -49,6 +49,7 @@ async function handleNote(note, velocity, channel) {
     effectType === 'dragon' ||
     effectType === 'timeshift' ||
     effectType === 'potion' ||
+    effectType === 'lightning' ||
     effectType === 'laser'
   ) {
     action = velocity > 0 ? 'start' : 'stop';
