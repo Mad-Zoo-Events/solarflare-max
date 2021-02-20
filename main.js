@@ -3,7 +3,7 @@ const fetch = require('node-fetch');
 const {Note} = require('@tonaljs/tonal');
 const initializeMappings = require('./init');
 
-const URL_PREFIX = 'https://visuals.madzoo.events';
+const URL_PREFIX = 'https://visuals.madzoo.events/api/effects';
 
 const currentlyPlaying = new Map();
 const currentRequests = new Map();
@@ -24,7 +24,7 @@ Max.addHandler('is_playing', (isPlaying) => {
     [...currentlyPlaying.keys()].forEach((key) => {
       currentlyPlaying.delete(key);
     });
-    const url = `${URL_PREFIX}/effects/stopall`;
+    const url = `${URL_PREFIX}/stopall`;
     Max.post('STOP ALL', url);
     fetch(url, {
       method: 'POST',
@@ -52,8 +52,8 @@ async function handleNote(note, velocity, channel) {
     effectType === 'laser'
   ) {
     action = velocity > 0 ? 'start' : 'stop';
-  } else if (effectType === 'api') {
-    const url = `${URL_PREFIX}/${params.url}`;
+  } else if (effectType === 'stopall') {
+    const url = `${URL_PREFIX}/stopall`;
     fetch(url, {method: 'POST', body: JSON.stringify(params.payload)});
     return;
   }
