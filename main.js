@@ -3,7 +3,8 @@ const base64 = require('base-64');
 const fetch = require('node-fetch');
 const {initializeMappings, getCredentials} = require('./init');
 
-const URL_PREFIX = 'https://visuals.madzoo.events/api/effects';
+const EFFECTS_PREFIX = 'https://visuals.madzoo.events/api/effects';
+const CLOCK_PREFIX = 'https://visuals.madzoo.events/api/clock';
 
 const {username, password} = getCredentials();
 
@@ -12,12 +13,14 @@ const currentRequests = new Map();
 
 let startStopMap = new Map();
 let triggerMap = new Map();
+let clockMap = new Map();
 let stopAllMap = new Map();
 
 initializeMappings(username, password).then(maps => {
   startStopMap = maps.startStopMap;
   triggerMap = maps.triggerMap;
   stopAllMap = maps.stopAllMap;
+  clockMap = maps.clockMap;
 
   // Handles the actual note input from the M4L patcher.
   Max.addHandler('note', (note, velocity, channel) => {
@@ -29,7 +32,7 @@ initializeMappings(username, password).then(maps => {
     if (isPlaying === 0) {
       currentlyPlaying.clear();
 
-      const url = `${URL_PREFIX}/stopall`;
+      const url = `${EFFECTS_PREFIX}/stopall`;
       Max.post('STOP ALL', url);
       runEffect(url, {detachClocks: true, stopEffects: true});
     }
@@ -52,15 +55,16 @@ async function handleNote(note, velocity, channel) {
   const startStop = startStopMap.get(key);
   const trigger = triggerMap.get(key);
   const stopAll = stopAllMap.get(key);
+  const clock = clockMap.get(key);
 
-  if (!startStop && !trigger && !stopAll) {
+  if (!startStop && !trigger && !stopAll && !clock) {
     Max.post(`Channel ${channel} Note ${note} not mapped`);
     return;
   }
 
   if (stopAll) {
     const {displayName, payload} = stopAll;
-    const url = `${URL_PREFIX}/stopall`;
+    const url = `${EFFECTS_PREFIX}/stopall`;
 
     Max.post(displayName, url);
     runEffect(url, payload);
@@ -68,10 +72,10 @@ async function handleNote(note, velocity, channel) {
     return;
   }
 
-  if (trigger) {
+  if (trigger && velocity > 0) {
     const {effectType, id, displayName} = trigger;
     const action = 'trigger';
-    const url = `${URL_PREFIX}/run/${effectType}/${id}/${action}`;
+    const url = `${EFFECTS_PREFIX}/run/${effectType}/${id}/${action}`;
 
     Max.post(`${action} ${displayName}`, url);
     manageRequest(id, () => runEffect(url));
@@ -80,7 +84,7 @@ async function handleNote(note, velocity, channel) {
   if (startStop) {
     const {effectType, id, displayName} = startStop;
     const action = velocity > 0 ? 'start' : 'stop';
-    const url = `${URL_PREFIX}/run/${effectType}/${id}/${action}`;
+    const url = `${EFFECTS_PREFIX}/run/${effectType}/${id}/${action}`;
 
     if (action === 'start') {
       if (currentlyPlaying.get(id)) {
@@ -100,6 +104,20 @@ async function handleNote(note, velocity, channel) {
 
     Max.post(`${action} ${displayName}`, url);
     manageRequest(id, () => runEffect(url));
+  }
+
+  if (clock) {
+    const {displayName, payload} = clock;
+    const action = velocity > 0 ? 'subscribe' : 'unsubscribe';
+    const url = `${CLOCK_PREFIX}/${action}`;
+
+    if (currentlyPlaying.get(payload.presetId)) {
+      payload.isRunning = true;
+      currentlyPlaying.delete(payload.presetId);
+    }
+
+    Max.post(`${action} ${displayName}`, url);
+    manageRequest(payload.presetId, () => runEffect(url, payload, 'PUT'));
   }
 }
 

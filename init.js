@@ -17,7 +17,7 @@ const fetchEffects = async (username, password) => {
   }
 };
 
-const appendMappings = (presets, effectType, startStopMap, triggerMap) => {
+const appendMappings = (presets, effectType, startStopMap, triggerMap, clockMap) => {
   if (!presets) {
     return;
   }
@@ -43,6 +43,27 @@ const appendMappings = (presets, effectType, startStopMap, triggerMap) => {
             displayName
           });
           break;
+        case "clockOnBeat":
+          clockMap.set(`${channel}:${key}`, {
+            displayName,
+            payload: {
+              presetId: id,
+              effectType,
+              isRunning: false,
+              offBeat: false
+            }
+          });
+          break;
+        case "clockOffBeat":
+          clockMap.set(`${channel}:${key}`, {
+            displayName,
+            payload: {
+              presetId: id,
+              effectType,
+              isRunning: false,
+              offBeat: true
+            }
+          });
       }
     });
   });
@@ -53,6 +74,7 @@ module.exports = {
     const startStopMap = new Map();
     const triggerMap = new Map();
     const stopAllMap = new Map();
+    const clockMap = new Map();
 
     const {
       commandPresets,
@@ -64,13 +86,13 @@ module.exports = {
       timeshiftPresets
     } = await fetchEffects(username, password);
 
-    appendMappings(commandPresets, "command", startStopMap, triggerMap);
-    appendMappings(particlePresets, "particle", startStopMap, triggerMap);
-    appendMappings(dragonPresets, "dragon", startStopMap, triggerMap);
-    appendMappings(timeshiftPresets, "timeshift", startStopMap, triggerMap);
-    appendMappings(potionPresets, "potion", startStopMap, triggerMap);
-    appendMappings(lightningPresets, "lightning", startStopMap, triggerMap);
-    appendMappings(laserPresets, "laser", startStopMap, triggerMap);
+    appendMappings(commandPresets, "command", startStopMap, triggerMap, clockMap);
+    appendMappings(particlePresets, "particle", startStopMap, triggerMap, clockMap);
+    appendMappings(dragonPresets, "dragon", startStopMap, triggerMap, clockMap);
+    appendMappings(timeshiftPresets, "timeshift", startStopMap, triggerMap, clockMap);
+    appendMappings(potionPresets, "potion", startStopMap, triggerMap, clockMap);
+    appendMappings(lightningPresets, "lightning", startStopMap, triggerMap, clockMap);
+    appendMappings(laserPresets, "laser", startStopMap, triggerMap, clockMap);
 
     stopAllMappings.forEach((mapping) => {
       const {channel, key, displayName, payload} = mapping;
@@ -83,7 +105,8 @@ module.exports = {
     return {
       startStopMap,
       triggerMap,
-      stopAllMap
+      stopAllMap,
+      clockMap
     };
   },
 
