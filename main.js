@@ -69,7 +69,7 @@ async function handleNote(note, velocity, channel) {
     return;
   }
 
-  const url = `${URL_PREFIX}/effects/run/${effectType}/${id}/${action}`;
+  const url = `${URL_PREFIX}/run/${effectType}/${id}/${action}`;
 
   if (action === 'start') {
     if (currentlyPlaying.get(id)) {
