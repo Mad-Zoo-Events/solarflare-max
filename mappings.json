@@ -1281,33 +1281,30 @@
     "channel": 16,
     "note": "C3",
     "name": "Stop All",
-    "url": "effects/stopall",
     "payload": {
       "detachClocks": true,
       "stopEffects": true
     },
-    "effectType": "api"
+    "effectType": "stopall"
   },
   {
     "channel": 16,
     "note": "C#3",
     "name": "Remove Clocks",
-    "url": "effects/stopall",
     "payload": {
       "detachClocks": true,
       "stopEffects": false
     },
-    "effectType": "api"
+    "effectType": "stopall"
   },
   {
     "channel": 16,
     "note": "D3",
     "name": "Stop Effects",
-    "url": "effects/stopall",
     "payload": {
       "detachClocks": false,
       "stopEffects": true
     },
-    "effectType": "api"
+    "effectType": "stopall"
   }
 ]

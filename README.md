@@ -16,6 +16,18 @@ MIDI Mapping are defined in `mapping.json`, and map a MIDI note (channel / note)
 }
 ```
 
+## Credentials
+
+To authenticate against the visual effect system, you need to create an `env.json` file in the root directory and fill in the credentials:
+
+```json
+{
+  "username": "",
+  "password": ""
+}
+```
+
+
 ## Usage in Ableton
 
 Add the `solarflare_msg.amxd` M4L device to a MIDI track in Ableton, and add a MIDI clip. MIDI messages corresponding to mapped actions will trigger an API call.

@@ -1,13 +1,15 @@
 const Max = require('max-api');
+const base64 = require('base-64');
 const fetch = require('node-fetch');
 const {Note} = require('@tonaljs/tonal');
-const initializeMappings = require('./init');
+const {initializeMappings, getCredentials} = require('./init');
 
-const URL_PREFIX = 'https://visuals.madzoo.events';
+const URL_PREFIX = 'https://visuals.madzoo.events/api/effects';
 
 const currentlyPlaying = new Map();
 const currentRequests = new Map();
 const effectParametersMap = initializeMappings();
+const {username, password} = getCredentials();
 
 /**
  * Handles the actual note input from the M4L patcher.
@@ -24,14 +26,22 @@ Max.addHandler('is_playing', (isPlaying) => {
     [...currentlyPlaying.keys()].forEach((key) => {
       currentlyPlaying.delete(key);
     });
-    const url = `${URL_PREFIX}/effects/stopall`;
+    const url = `${URL_PREFIX}/stopall`;
     Max.post('STOP ALL', url);
-    fetch(url, {
-      method: 'POST',
-      body: JSON.stringify({detachClocks: false, stopEffects: true}),
-    });
+    runEffect(url, {detachClocks: false, stopEffects: true});
   }
 });
+
+async function runEffect(url, payload) {
+  const body = payload ? JSON.stringify(payload) : null;
+  return await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + base64.encode(username + ":" + password)
+    },
+    body
+  });
+}
 
 async function handleNote(note, velocity, channel) {
   const params = getEffectParameters(channel, note);
@@ -40,7 +50,7 @@ async function handleNote(note, velocity, channel) {
     return;
   }
 
-  const {effectType, id} = params;
+  const {effectType, id, payload} = params;
   let action = 'trigger';
   if (effectType === 'command') {
     action = 'trigger';
@@ -49,12 +59,13 @@ async function handleNote(note, velocity, channel) {
     effectType === 'dragon' ||
     effectType === 'timeshift' ||
     effectType === 'potion' ||
+    effectType === 'lightning' ||
     effectType === 'laser'
   ) {
     action = velocity > 0 ? 'start' : 'stop';
-  } else if (effectType === 'api') {
-    const url = `${URL_PREFIX}/${params.url}`;
-    fetch(url, {method: 'POST', body: JSON.stringify(params.payload)});
+  } else if (effectType === 'stopall') {
+    const url = `${URL_PREFIX}/stopall`;
+    runEffect(url, payload);
     return;
   }
 
@@ -66,8 +77,8 @@ async function handleNote(note, velocity, channel) {
       const stopUrl = url.replace('start', 'stop');
       Max.post(`retrigger ${params.name}`, url);
       manageRequest(id, async () => {
-        await fetch(stopUrl, {method: 'POST'});
-        await fetch(url, {method: 'POST'});
+        await runEffect(stopUrl);
+        await runEffect(url);
       });
       return;
     }
@@ -77,7 +88,7 @@ async function handleNote(note, velocity, channel) {
   }
 
   Max.post(`${action} ${params.name}`, url);
-  manageRequest(id, () => fetch(url, {method: 'POST'}));
+  manageRequest(id, () => runEffect(url));
 }
 
 async function manageRequest(id, makeRequest) {
