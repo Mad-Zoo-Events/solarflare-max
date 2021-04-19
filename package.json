@@ -7,7 +7,6 @@
   "author": "cannoneyed",
   "license": "MIT",
   "dependencies": {
-    "@tonaljs/tonal": "^4.5.1",
     "base-64": "^1.0.0",
     "node-fetch": "^2.6.1"
   },

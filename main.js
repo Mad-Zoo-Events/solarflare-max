@@ -1,35 +1,39 @@
 const Max = require('max-api');
 const base64 = require('base-64');
 const fetch = require('node-fetch');
-const {Note} = require('@tonaljs/tonal');
 const {initializeMappings, getCredentials} = require('./init');
 
 const URL_PREFIX = 'https://visuals.madzoo.events/api/effects';
 
-const currentlyPlaying = new Map();
-const currentRequests = new Map();
-const effectParametersMap = initializeMappings();
 const {username, password} = getCredentials();
 
-/**
- * Handles the actual note input from the M4L patcher.
- */
-Max.addHandler('note', (note, velocity, channel) => {
-  handleNote(note, velocity, channel);
-});
+const currentlyPlaying = new Map();
+const currentRequests = new Map();
 
-/**
- * Handles the actual note input from the M4L patcher.
- */
-Max.addHandler('is_playing', (isPlaying) => {
-  if (isPlaying === 0) {
-    [...currentlyPlaying.keys()].forEach((key) => {
-      currentlyPlaying.delete(key);
-    });
-    const url = `${URL_PREFIX}/stopall`;
-    Max.post('STOP ALL', url);
-    runEffect(url, {detachClocks: false, stopEffects: true});
-  }
+let startStopMap = new Map();
+let triggerMap = new Map();
+let stopAllMap = new Map();
+
+initializeMappings(username, password).then(maps => {
+  startStopMap = maps.startStopMap;
+  triggerMap = maps.triggerMap;
+  stopAllMap = maps.stopAllMap;
+
+  // Handles the actual note input from the M4L patcher.
+  Max.addHandler('note', (note, velocity, channel) => {
+    handleNote(note, velocity, channel);
+  });
+
+  // Stops all effects if timeline is not playing
+  Max.addHandler('is_playing', (isPlaying) => {
+    if (isPlaying === 0) {
+      currentlyPlaying.clear();
+
+      const url = `${URL_PREFIX}/stopall`;
+      Max.post('STOP ALL', url);
+      runEffect(url, {detachClocks: true, stopEffects: true});
+    }
+  });
 });
 
 async function runEffect(url, payload) {
@@ -44,51 +48,59 @@ async function runEffect(url, payload) {
 }
 
 async function handleNote(note, velocity, channel) {
-  const params = getEffectParameters(channel, note);
-  if (!params) {
-    Max.post(`Channel ${channel} Note ${Note.fromMidi(note)} not mapped`);
+  const key = `${channel}:${note}`;
+  const startStop = startStopMap.get(key);
+  const trigger = triggerMap.get(key);
+  const stopAll = stopAllMap.get(key);
+
+  if (!startStop && !trigger && !stopAll) {
+    Max.post(`Channel ${channel} Note ${note} not mapped`);
     return;
   }
 
-  const {effectType, id, payload} = params;
-  let action = 'trigger';
-  if (effectType === 'command') {
-    action = 'trigger';
-  } else if (
-    effectType === 'particle' ||
-    effectType === 'dragon' ||
-    effectType === 'timeshift' ||
-    effectType === 'potion' ||
-    effectType === 'lightning' ||
-    effectType === 'laser'
-  ) {
-    action = velocity > 0 ? 'start' : 'stop';
-  } else if (effectType === 'stopall') {
+  if (stopAll) {
+    const {displayName, payload} = stopAll;
     const url = `${URL_PREFIX}/stopall`;
+
+    Max.post(displayName, url);
     runEffect(url, payload);
+
     return;
   }
 
-  const url = `${URL_PREFIX}/run/${effectType}/${id}/${action}`;
+  if (trigger) {
+    const {effectType, id, displayName} = trigger;
+    const action = 'trigger';
+    const url = `${URL_PREFIX}/run/${effectType}/${id}/${action}`;
 
-  if (action === 'start') {
-    if (currentlyPlaying.get(id)) {
-      // Wait until stopped to retrigger
-      const stopUrl = url.replace('start', 'stop');
-      Max.post(`retrigger ${params.name}`, url);
-      manageRequest(id, async () => {
-        await runEffect(stopUrl);
-        await runEffect(url);
-      });
-      return;
-    }
-    currentlyPlaying.set(id, true);
-  } else if (action === 'stop') {
-    currentlyPlaying.delete(id);
+    Max.post(`${action} ${displayName}`, url);
+    manageRequest(id, () => runEffect(url));
   }
 
-  Max.post(`${action} ${params.name}`, url);
-  manageRequest(id, () => runEffect(url));
+  if (startStop) {
+    const {effectType, id, displayName} = startStop;
+    const action = velocity > 0 ? 'start' : 'stop';
+    const url = `${URL_PREFIX}/run/${effectType}/${id}/${action}`;
+
+    if (action === 'start') {
+      if (currentlyPlaying.get(id)) {
+        // Wait until stopped to retrigger
+        const stopUrl = url.replace('start', 'stop');
+        Max.post(`retrigger ${params.displayName}`, url);
+        manageRequest(id, async () => {
+          await runEffect(stopUrl);
+          await runEffect(url);
+        });
+      } else {
+        currentlyPlaying.set(id, true);
+      }
+    } else if (action === 'stop') {
+      currentlyPlaying.delete(id);
+    }
+
+    Max.post(`${action} ${displayName}`, url);
+    manageRequest(id, () => runEffect(url));
+  }
 }
 
 async function manageRequest(id, makeRequest) {
@@ -101,10 +113,4 @@ async function manageRequest(id, makeRequest) {
   currentRequests.set(id, request);
   await request;
   currentRequests.delete(id);
-}
-
-function getEffectParameters(channel, note) {
-  const key = `${channel}:${note}`;
-  const params = effectParametersMap.get(key);
-  return params;
 }
