@@ -1,20 +1,15 @@
 # Solarflare M4L
 
-This M4L device receives MIDI input from Ableton and translates it into API requests to the [Solarflare](https://github.com/Eynorey/solarflare) visual server.
+This M4L device receives MIDI input from Ableton and translates it into API requests to the [Solarflare](https://github.com/Eynorey/solarflare) visual effects system.
 
 ## Mapping
 
-MIDI Mapping are defined in `mapping.json`, and map a MIDI note (channel / note) to a call to an action on a preset in the Solarflare system, as defined [here](https://github.com/Eynorey/solarflare#api-endpoints). To define a mapping, add an entry to the json array as follows:
+You can map effect presets to MIDI notes and channels on https://visuals.madzoo.events/presetmanager.
 
-```json
-{
-  "channel": 1,
-  "note": 24,
-  "effectType": "particle",
-  "id": "<uuid>",
-  "action": "trigger"
-}
-```
+In addition to these, you can map notes to requests for stopping all effects, unsubscribing everything from the clock, or both. 
+These mappings are defined in the [`stop-all-mappings.json`](stop-all-mappings.json) file.
+
+The mappings are fetched once the M4L device starts, and if you make any changes through the control panel you can use the "Reload" button on the Max device to fetch the updates from the backend.
 
 ## Credentials
 
@@ -27,7 +22,8 @@ To authenticate against the visual effect system, you need to create an `env.jso
 }
 ```
 
-
 ## Usage in Ableton
 
 Add the `solarflare_msg.amxd` M4L device to a MIDI track in Ableton, and add a MIDI clip. MIDI messages corresponding to mapped actions will trigger an API call.
+
+You can check the Max console for output to verify your mappings work mas intended.
