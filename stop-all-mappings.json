@@ -1,0 +1,29 @@
+[
+  {
+    "channel": 16,
+    "key": 60,
+    "displayName": "Stop Everything",
+    "payload": {
+      "detachClocks": true,
+      "stopEffects": true
+    }
+  },
+  {
+    "channel": 16,
+    "key": 61,
+    "displayName": "Remove Clocks",
+    "payload": {
+      "detachClocks": true,
+      "stopEffects": false
+    }
+  },
+  {
+    "channel": 16,
+    "key": 62,
+    "displayName": "Stop Effects",
+    "payload": {
+      "detachClocks": false,
+      "stopEffects": true
+    }
+  }
+]

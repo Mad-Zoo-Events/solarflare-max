@@ -1,20 +1,122 @@
 const Max = require('max-api');
-const {Note} = require('@tonaljs/tonal');
-const mappings = require('./mappings');
+const base64 = require('base-64');
+const fetch = require('node-fetch');
+const stopAllMappings = require('./stop-all-mappings');
 const env = require('./env');
 
-module.exports = {
-  initializeMappings: function () {
-    const map = new Map();
-    mappings.forEach((mapping) => {
-      const {channel, note} = mapping;
-      if (channel === undefined || note === undefined) return;
-      const noteNumber = Note.midi(note) + 12;
-      const key = `${channel}:${noteNumber}`;
-      console.log(note, key);
-      map.set(key, mapping);
+const fetchEffects = async (username, password) => {
+  const url = 'https://visuals.madzoo.events/api/presets/all';
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': 'Basic ' + base64.encode(username + ":" + password)
+    }
+  });
+  if (response.ok) {
+    return await response.json();
+  }
+};
+
+const appendMappings = (presets, effectType, maps) => {
+  if (!presets) {
+    return;
+  }
+
+  presets.forEach(({id, midiMappings, displayName}) => {
+    if (!midiMappings) {
+      return;
+    }
+
+    midiMappings.forEach(({channel, key, behavior}) => {
+      switch (behavior) {
+        case "trigger":
+          maps.triggerMap.set(`${channel}:${key}`, {
+            id,
+            effectType,
+            displayName
+          });
+          break;
+        case "toggle":
+          maps.toggleMap.set(`${channel}:${key}`, {
+            id,
+            effectType,
+            displayName
+          });
+          break;
+        case "hold":
+          maps.holdMap.set(`${channel}:${key}`, {
+            id,
+            effectType,
+            displayName
+          });
+          break;
+        case "clock1Toggle":
+        case "clock2Toggle":
+          maps.clockToggleMap.set(`${channel}:${key}`, {
+            displayName,
+            payload: {
+              presetId: id,
+              effectType,
+              isRunning: false,
+              offBeat: behavior === "clock2Toggle" ? true : false
+            }
+          });
+          break;
+        case "clock1Hold":
+        case "clock2Hold":
+          maps.clockHoldMap.set(`${channel}:${key}`, {
+            displayName,
+            payload: {
+              presetId: id,
+              effectType,
+              isRunning: false,
+              offBeat: behavior === "clock2Hold" ? true : false
+            }
+          });
+          break;
+      }
     });
-    return map;
+  });
+};
+
+module.exports = {
+  initializeMappings: async function (username, password) {
+    const maps = {
+      triggerMap: new Map(),
+      toggleMap: new Map(),
+      holdMap: new Map(),
+      clockToggleMap: new Map(),
+      clockHoldMap: new Map(),
+      stopAllMap: new Map()
+    };
+
+    const {
+      commandPresets,
+      dragonPresets,
+      laserPresets,
+      lightningPresets,
+      particlePresets,
+      potionPresets,
+      timeshiftPresets
+    } = await fetchEffects(username, password);
+
+    appendMappings(commandPresets, "command", maps);
+    appendMappings(particlePresets, "particle", maps);
+    appendMappings(dragonPresets, "dragon", maps);
+    appendMappings(timeshiftPresets, "timeshift", maps);
+    appendMappings(potionPresets, "potion", maps);
+    appendMappings(lightningPresets, "lightning", maps);
+    appendMappings(laserPresets, "laser", maps);
+
+    stopAllMappings.forEach((mapping) => {
+      const {channel, key, displayName, payload} = mapping;
+      maps.stopAllMap.set(`${channel}:${key}`, {
+        displayName,
+        payload
+      });
+    });
+
+    return maps;
   },
 
   getCredentials: function () {
