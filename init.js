@@ -17,7 +17,7 @@ const fetchEffects = async (username, password) => {
   }
 };
 
-const appendMappings = (presets, effectType, startStopMap, triggerMap, clockMap) => {
+const appendMappings = (presets, effectType, maps) => {
   if (!presets) {
     return;
   }
@@ -29,41 +29,51 @@ const appendMappings = (presets, effectType, startStopMap, triggerMap, clockMap)
 
     midiMappings.forEach(({channel, key, behavior}) => {
       switch (behavior) {
-        case "startStop":
-          startStopMap.set(`${channel}:${key}`, {
-            id,
-            effectType,
-            displayName
-          });
-          break;
         case "trigger":
-          triggerMap.set(`${channel}:${key}`, {
+          maps.triggerMap.set(`${channel}:${key}`, {
             id,
             effectType,
             displayName
           });
           break;
-        case "clockOnBeat":
-          clockMap.set(`${channel}:${key}`, {
+        case "toggle":
+          maps.toggleMap.set(`${channel}:${key}`, {
+            id,
+            effectType,
+            displayName
+          });
+          break;
+        case "hold":
+          maps.holdMap.set(`${channel}:${key}`, {
+            id,
+            effectType,
+            displayName
+          });
+          break;
+        case "clock1Toggle":
+        case "clock2Toggle":
+          maps.clockToggleMap.set(`${channel}:${key}`, {
             displayName,
             payload: {
               presetId: id,
               effectType,
               isRunning: false,
-              offBeat: false
+              offBeat: behavior === "clock2Toggle" ? true : false
             }
           });
           break;
-        case "clockOffBeat":
-          clockMap.set(`${channel}:${key}`, {
+        case "clock1Hold":
+        case "clock2Hold":
+          maps.clockHoldMap.set(`${channel}:${key}`, {
             displayName,
             payload: {
               presetId: id,
               effectType,
               isRunning: false,
-              offBeat: true
+              offBeat: behavior === "clock2Hold" ? true : false
             }
           });
+          break;
       }
     });
   });
@@ -71,10 +81,14 @@ const appendMappings = (presets, effectType, startStopMap, triggerMap, clockMap)
 
 module.exports = {
   initializeMappings: async function (username, password) {
-    const startStopMap = new Map();
-    const triggerMap = new Map();
-    const stopAllMap = new Map();
-    const clockMap = new Map();
+    const maps = {
+      triggerMap: new Map(),
+      toggleMap: new Map(),
+      holdMap: new Map(),
+      clockToggleMap: new Map(),
+      clockHoldMap: new Map(),
+      stopAllMap: new Map()
+    };
 
     const {
       commandPresets,
@@ -86,28 +100,23 @@ module.exports = {
       timeshiftPresets
     } = await fetchEffects(username, password);
 
-    appendMappings(commandPresets, "command", startStopMap, triggerMap, clockMap);
-    appendMappings(particlePresets, "particle", startStopMap, triggerMap, clockMap);
-    appendMappings(dragonPresets, "dragon", startStopMap, triggerMap, clockMap);
-    appendMappings(timeshiftPresets, "timeshift", startStopMap, triggerMap, clockMap);
-    appendMappings(potionPresets, "potion", startStopMap, triggerMap, clockMap);
-    appendMappings(lightningPresets, "lightning", startStopMap, triggerMap, clockMap);
-    appendMappings(laserPresets, "laser", startStopMap, triggerMap, clockMap);
+    appendMappings(commandPresets, "command", maps);
+    appendMappings(particlePresets, "particle", maps);
+    appendMappings(dragonPresets, "dragon", maps);
+    appendMappings(timeshiftPresets, "timeshift", maps);
+    appendMappings(potionPresets, "potion", maps);
+    appendMappings(lightningPresets, "lightning", maps);
+    appendMappings(laserPresets, "laser", maps);
 
     stopAllMappings.forEach((mapping) => {
       const {channel, key, displayName, payload} = mapping;
-      stopAllMap.set(`${channel}:${key}`, {
+      maps.stopAllMap.set(`${channel}:${key}`, {
         displayName,
         payload
       });
     });
 
-    return {
-      startStopMap,
-      triggerMap,
-      stopAllMap,
-      clockMap
-    };
+    return maps;
   },
 
   getCredentials: function () {
