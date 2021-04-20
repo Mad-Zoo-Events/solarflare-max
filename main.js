@@ -23,6 +23,7 @@ let maps = {
 
 initializeMappings(username, password).then(midiMaps => {
   maps = midiMaps;
+  Max.post('Loaded MIDI mappings');
 
   // Handles the actual note input from the M4L patcher.
   Max.addHandler('note', (note, velocity, channel) => {
@@ -35,9 +36,17 @@ initializeMappings(username, password).then(midiMaps => {
       currentlyPlaying.clear();
 
       const url = `${EFFECTS_PREFIX}/stopall`;
-      Max.post('STOP ALL', url);
+      Max.post('STOP ALL');
       runEffect(url, {detachClocks: true, stopEffects: true});
     }
+  });
+
+  // Listen for reload
+  Max.addHandler('reload', () => {
+    initializeMappings(username, password).then(midiMaps => {
+      maps = midiMaps;
+      Max.post('Reloaded MIDI mappings');
+    });
   });
 });
 
@@ -71,7 +80,7 @@ async function handleNote(note, velocity, channel) {
     const {displayName, payload} = stopAll;
     const url = `${EFFECTS_PREFIX}/stopall`;
 
-    Max.post(displayName, url);
+    Max.post(displayName);
     runEffect(url, payload);
 
     return;
@@ -82,7 +91,7 @@ async function handleNote(note, velocity, channel) {
     const action = 'trigger';
     const url = `${EFFECTS_PREFIX}/run/${effectType}/${id}/${action}`;
 
-    Max.post(`${action} ${displayName}`, url);
+    Max.post(`${action} ${displayName}`);
     manageRequest(id, () => runEffect(url));
   }
 
@@ -99,7 +108,7 @@ async function handleNote(note, velocity, channel) {
 
     const url = `${EFFECTS_PREFIX}/run/${effectType}/${id}/${action}`;
 
-    Max.post(`${action} ${displayName}`, url);
+    Max.post(`${action} ${displayName}`);
     manageRequest(id, () => runEffect(url));
   }
 
@@ -112,7 +121,7 @@ async function handleNote(note, velocity, channel) {
       if (currentlyPlaying.has(id)) {
         // Wait until stopped to retrigger
         const stopUrl = url.replace('start', 'stop');
-        Max.post(`retrigger ${params.displayName}`, url);
+        Max.post(`retrigger ${params.displayName}`);
         manageRequest(id, async () => {
           await runEffect(stopUrl);
           await runEffect(url);
@@ -124,12 +133,13 @@ async function handleNote(note, velocity, channel) {
       currentlyPlaying.delete(id);
     }
 
-    Max.post(`${action} ${displayName}`, url);
+    Max.post(`${action} ${displayName}`);
     manageRequest(id, () => runEffect(url));
   }
 
   if (clockToggle && velocity > 0) {
     const {displayName, payload} = clockToggle;
+    const id = payload.presetId;
     let action = 'subscribe';
 
     if (currentlySubscribed.has(id)) {
@@ -141,27 +151,28 @@ async function handleNote(note, velocity, channel) {
 
     const url = `${CLOCK_PREFIX}/${action}`;
 
-    if (currentlyPlaying.has(payload.presetId)) {
+    if (currentlyPlaying.has(id)) {
       payload.isRunning = true;
-      currentlyPlaying.delete(payload.presetId);
+      currentlyPlaying.delete(id);
     }
 
-    Max.post(`${action} ${displayName}`, url);
-    manageRequest(payload.presetId, () => runEffect(url, payload, 'PUT'));
+    Max.post(`${action} ${displayName}`);
+    manageRequest(id, () => runEffect(url, payload, 'PUT'));
   }
 
   if (clockHold) {
     const {displayName, payload} = clockHold;
+    const id = payload.presetId;
     const action = velocity > 0 ? 'subscribe' : 'unsubscribe';
     const url = `${CLOCK_PREFIX}/${action}`;
 
-    if (currentlyPlaying.has(payload.presetId)) {
+    if (currentlyPlaying.has(id)) {
       payload.isRunning = true;
-      currentlyPlaying.delete(payload.presetId);
+      currentlyPlaying.delete(id);
     }
 
-    Max.post(`${action} ${displayName}`, url);
-    manageRequest(payload.presetId, () => runEffect(url, payload, 'PUT'));
+    Max.post(`${action} ${displayName}`);
+    manageRequest(id, () => runEffect(url, payload, 'PUT'));
   }
 }
 
