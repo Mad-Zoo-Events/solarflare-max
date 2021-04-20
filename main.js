@@ -88,9 +88,9 @@ async function handleNote(note, velocity, channel) {
 
   if (toggle && velocity > 0) {
     const {effectType, id, displayName} = toggle;
-    const action = 'start';
+    let action = 'start';
 
-    if (currentlyPlaying.get(id)) {
+    if (currentlyPlaying.has(id)) {
       action = 'stop';
       currentlyPlaying.delete(id);
     } else {
@@ -109,7 +109,7 @@ async function handleNote(note, velocity, channel) {
     const url = `${EFFECTS_PREFIX}/run/${effectType}/${id}/${action}`;
 
     if (action === 'start') {
-      if (currentlyPlaying.get(id)) {
+      if (currentlyPlaying.has(id)) {
         // Wait until stopped to retrigger
         const stopUrl = url.replace('start', 'stop');
         Max.post(`retrigger ${params.displayName}`, url);
@@ -130,9 +130,9 @@ async function handleNote(note, velocity, channel) {
 
   if (clockToggle && velocity > 0) {
     const {displayName, payload} = clockToggle;
-    const action = 'subscribe';
+    let action = 'subscribe';
 
-    if (currentlySubscribed.get(id)) {
+    if (currentlySubscribed.has(id)) {
       action = 'unsubscribe';
       currentlySubscribed.delete(id);
     } else {
@@ -141,7 +141,7 @@ async function handleNote(note, velocity, channel) {
 
     const url = `${CLOCK_PREFIX}/${action}`;
 
-    if (currentlyPlaying.get(payload.presetId)) {
+    if (currentlyPlaying.has(payload.presetId)) {
       payload.isRunning = true;
       currentlyPlaying.delete(payload.presetId);
     }
@@ -155,7 +155,7 @@ async function handleNote(note, velocity, channel) {
     const action = velocity > 0 ? 'subscribe' : 'unsubscribe';
     const url = `${CLOCK_PREFIX}/${action}`;
 
-    if (currentlyPlaying.get(payload.presetId)) {
+    if (currentlyPlaying.has(payload.presetId)) {
       payload.isRunning = true;
       currentlyPlaying.delete(payload.presetId);
     }
