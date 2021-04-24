@@ -2,6 +2,8 @@ const {getMappings, runEffect, runStopAll, subscribeToClock, unsubscribeFromCloc
 const {connectWebSocket, isRunning, isSubscribed} = require("./socketManager");
 const Max = require("max-api");
 
+let writeLogs = false;
+
 let maps = {
     triggerMap: new Map(),
     toggleMap: new Map(),
@@ -23,7 +25,7 @@ getMappings().then(midiMaps => {
     // Stops all effects if timeline is not playing
     Max.addHandler("is_playing", (isPlaying) => {
         if (isPlaying === 0) {
-            Max.post("STOP ALL");
+            writeLogs && Max.post("STOP ALL");
             runStopAll({detachClocks: true, stopEffects: true});
         }
     });
@@ -34,6 +36,17 @@ getMappings().then(midiMaps => {
             maps = midiMaps;
             Max.post("Reloaded MIDI mappings");
         });
+    });
+
+    // Listen for write_logs
+    Max.addHandler("write_logs", (enabled) => {
+        if (enabled === 1) {
+            writeLogs = true;
+            Max.post("Will write effect logs");
+        } else {
+            writeLogs = false;
+            Max.post("Will NOT write effect logs");
+        }
     });
 
     connectWebSocket();
@@ -50,14 +63,14 @@ async function handleNote(note, velocity, channel) {
     const stopAll = maps.stopAllMap.get(key);
 
     if (!trigger && !toggle && !hold && !clockToggle && !clockHold && !stopAll) {
-        Max.post(`Channel ${channel} Note ${note} not mapped`);
+        writeLogs && Max.post(`Channel ${channel} Note ${note} not mapped`);
         return;
     }
 
     if (stopAll) {
         const {displayName, payload} = stopAll;
 
-        Max.post(displayName);
+        writeLogs && Max.post(displayName);
         runStopAll(payload);
 
         return;
@@ -67,7 +80,7 @@ async function handleNote(note, velocity, channel) {
         const {effectType, id, displayName} = trigger;
         const action = "trigger";
 
-        Max.post(`${action} ${displayName}`);
+        writeLogs && Max.post(`${action} ${displayName}`);
         runEffect(effectType, id, action);
     }
 
@@ -79,7 +92,7 @@ async function handleNote(note, velocity, channel) {
             action = "stop";
         }
 
-        Max.post(`${action} ${displayName}`);
+        writeLogs && Max.post(`${action} ${displayName}`);
         runEffect(effectType, id, action);
     }
 
@@ -87,7 +100,7 @@ async function handleNote(note, velocity, channel) {
         const {effectType, id, displayName} = hold;
         const action = velocity > 0 ? "start" : "stop";
 
-        Max.post(`${action} ${displayName}`);
+        writeLogs && Max.post(`${action} ${displayName}`);
         runEffect(effectType, id, action);
     }
 
@@ -100,10 +113,10 @@ async function handleNote(note, velocity, channel) {
         }
 
         if (isSubscribed(id)) {
-            Max.post(`unsubscribe ${displayName}`);
+            writeLogs && Max.post(`unsubscribe ${displayName}`);
             unsubscribeFromClock(payload);
         } else {
-            Max.post(`subscribe ${displayName}`);
+            writeLogs && Max.post(`subscribe ${displayName}`);
             subscribeToClock(payload);
         }
     }
@@ -117,10 +130,10 @@ async function handleNote(note, velocity, channel) {
         }
 
         if (velocity > 0) {
-            Max.post(`subscribe ${displayName}`);
+            writeLogs && Max.post(`subscribe ${displayName}`);
             subscribeToClock(payload);
         } else {
-            Max.post(`unsubscribe ${displayName}`);
+            writeLogs && Max.post(`unsubscribe ${displayName}`);
             unsubscribeFromClock(payload);
         }
     }
