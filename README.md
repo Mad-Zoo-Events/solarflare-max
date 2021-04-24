@@ -24,6 +24,6 @@ To authenticate against the visual effect system, you need to create an `env.jso
 
 ## Usage in Ableton
 
-Add the `solarflare_msg.amxd` M4L device to a MIDI track in Ableton, and add a MIDI clip. MIDI messages corresponding to mapped actions will trigger an API call.
+Add the `solarflare-max.amxd` M4L device to a MIDI track in Ableton, and add a MIDI clip. MIDI messages corresponding to mapped actions will trigger an API call.
 
 You can check the Max console for output to verify your mappings work mas intended.
