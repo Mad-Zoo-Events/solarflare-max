@@ -161,6 +161,7 @@ const unsubscribeFromClock = async (payload) => {
 };
 
 module.exports = {
+    getAuthHeader,
     getMappings,
     runEffect,
     runStopAll,

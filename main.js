@@ -1,12 +1,6 @@
 const {getMappings, runEffect, runStopAll, subscribeToClock, unsubscribeFromClock} = require("./client");
+const {connectWebSocket, isRunning, isSubscribed} = require("./socketManager");
 const Max = require("max-api");
-
-const EFFECTS_PREFIX = "https://visuals.madzoo.events/api/effects";
-const CLOCK_PREFIX = "https://visuals.madzoo.events/api/clock";
-
-const currentlyPlaying = new Map();
-const currentlySubscribed = new Map();
-const currentRequests = new Map();
 
 let maps = {
     triggerMap: new Map(),
@@ -29,8 +23,6 @@ getMappings().then(midiMaps => {
     // Stops all effects if timeline is not playing
     Max.addHandler("is_playing", (isPlaying) => {
         if (isPlaying === 0) {
-            currentlyPlaying.clear();
-
             Max.post("STOP ALL");
             runStopAll({detachClocks: true, stopEffects: true});
         }
@@ -43,6 +35,8 @@ getMappings().then(midiMaps => {
             Max.post("Reloaded MIDI mappings");
         });
     });
+
+    connectWebSocket();
 });
 
 async function handleNote(note, velocity, channel) {
@@ -81,11 +75,8 @@ async function handleNote(note, velocity, channel) {
         const {effectType, id, displayName} = toggle;
         let action = "start";
 
-        if (currentlyPlaying.has(id)) {
+        if (isRunning(id)) {
             action = "stop";
-            currentlyPlaying.delete(id);
-        } else {
-            currentlyPlaying.set(id, true);
         }
 
         Max.post(`${action} ${displayName}`);
@@ -104,19 +95,14 @@ async function handleNote(note, velocity, channel) {
         const {displayName, payload} = clockToggle;
         const id = payload.presetId;
 
-        if (currentlyPlaying.has(id)) {
+        if (isRunning(id)) {
             payload.isRunning = true;
-            currentlyPlaying.delete(id);
         }
 
-        if (currentlySubscribed.has(id)) {
-            currentlySubscribed.delete(id);
-
+        if (isSubscribed(id)) {
             Max.post(`unsubscribe ${displayName}`);
             unsubscribeFromClock(payload);
         } else {
-            currentlySubscribed.set(id, true);
-
             Max.post(`subscribe ${displayName}`);
             subscribeToClock(payload);
         }
@@ -126,9 +112,8 @@ async function handleNote(note, velocity, channel) {
         const {displayName, payload} = clockHold;
         const id = payload.presetId;
 
-        if (currentlyPlaying.has(id)) {
+        if (isRunning(id)) {
             payload.isRunning = true;
-            currentlyPlaying.delete(id);
         }
 
         if (velocity > 0) {
