@@ -4,12 +4,25 @@ const fetch = require('node-fetch');
 const stopAllMappings = require('./stop-all-mappings');
 const env = require('./env');
 
-const fetchEffects = async (username, password) => {
+let authHeader = "";
+
+const getAuthHeader = () => {
+  if (authHeader === "") {
+    if (!env) {
+      Max.post("Credentials file not found. Please refer to the README");
+      return;
+    }
+    authHeader = `Basic ${base64.encode(`${env.username}:${env.password}`)}`;
+  }
+  return authHeader;
+};
+
+const fetchEffects = async () => {
   const url = 'https://visuals.madzoo.events/api/presets/all';
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      'Authorization': 'Basic ' + base64.encode(username + ":" + password)
+      'Authorization': getAuthHeader()
     }
   });
   if (response.ok) {
@@ -79,50 +92,46 @@ const appendMappings = (presets, effectType, maps) => {
   });
 };
 
-module.exports = {
-  initializeMappings: async function (username, password) {
-    const maps = {
-      triggerMap: new Map(),
-      toggleMap: new Map(),
-      holdMap: new Map(),
-      clockToggleMap: new Map(),
-      clockHoldMap: new Map(),
-      stopAllMap: new Map()
-    };
+const getMappings = async () => {
+  const maps = {
+    triggerMap: new Map(),
+    toggleMap: new Map(),
+    holdMap: new Map(),
+    clockToggleMap: new Map(),
+    clockHoldMap: new Map(),
+    stopAllMap: new Map()
+  };
 
-    const {
-      commandPresets,
-      dragonPresets,
-      laserPresets,
-      lightningPresets,
-      particlePresets,
-      potionPresets,
-      timeshiftPresets
-    } = await fetchEffects(username, password);
+  const {
+    commandPresets,
+    dragonPresets,
+    laserPresets,
+    lightningPresets,
+    particlePresets,
+    potionPresets,
+    timeshiftPresets
+  } = await fetchEffects();
 
-    appendMappings(commandPresets, "command", maps);
-    appendMappings(particlePresets, "particle", maps);
-    appendMappings(dragonPresets, "dragon", maps);
-    appendMappings(timeshiftPresets, "timeshift", maps);
-    appendMappings(potionPresets, "potion", maps);
-    appendMappings(lightningPresets, "lightning", maps);
-    appendMappings(laserPresets, "laser", maps);
+  appendMappings(commandPresets, "command", maps);
+  appendMappings(particlePresets, "particle", maps);
+  appendMappings(dragonPresets, "dragon", maps);
+  appendMappings(timeshiftPresets, "timeshift", maps);
+  appendMappings(potionPresets, "potion", maps);
+  appendMappings(lightningPresets, "lightning", maps);
+  appendMappings(laserPresets, "laser", maps);
 
-    stopAllMappings.forEach((mapping) => {
-      const {channel, key, displayName, payload} = mapping;
-      maps.stopAllMap.set(`${channel}:${key}`, {
-        displayName,
-        payload
-      });
+  stopAllMappings.forEach((mapping) => {
+    const {channel, key, displayName, payload} = mapping;
+    maps.stopAllMap.set(`${channel}:${key}`, {
+      displayName,
+      payload
     });
+  });
 
-    return maps;
-  },
+  return maps;
+};
 
-  getCredentials: function () {
-    if (!env) {
-      Max.post("Credentials file not found. Please refer to the README");
-    }
-    return {...env};
-  }
+module.exports = {
+  getMappings,
+  getAuthHeader
 };

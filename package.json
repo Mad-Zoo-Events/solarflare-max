@@ -1,14 +1,15 @@
 {
-  "name": "aurora_msg",
+  "name": "solarflare-max",
   "version": "1.0.0",
-  "description": "",
+  "description": "Max for Live device to control Solarflare visuals through MIDI signals",
   "main": "main.js",
-  "scripts": {},
-  "author": "cannoneyed",
+  "repository": "git@github.com:Mad-Zoo-Events/solarflare-max.git",
+  "author": "Adrian Riedel <adrian.riedel@outlook.com>",
   "license": "MIT",
   "dependencies": {
     "base-64": "^1.0.0",
-    "node-fetch": "^2.6.1"
+    "node-fetch": "^2.6.1",
+    "ws": "^7.4.5"
   },
   "devDependencies": {
     "prettier": "^2.1.2"
@@ -17,8 +18,8 @@
     "bracketSpacing": false,
     "printWidth": 80,
     "semi": true,
-    "singleQuote": true,
-    "tabWidth": 2,
-    "trailingComma": "es5"
+    "singleQuote": false,
+    "tabWidth": 4,
+    "trailingComma": "es6"
   }
 }

@@ -1,12 +1,9 @@
 const Max = require('max-api');
-const base64 = require('base-64');
 const fetch = require('node-fetch');
-const {initializeMappings, getCredentials} = require('./init');
+const {getMappings, getAuthHeader} = require('./init');
 
 const EFFECTS_PREFIX = 'https://visuals.madzoo.events/api/effects';
 const CLOCK_PREFIX = 'https://visuals.madzoo.events/api/clock';
-
-const {username, password} = getCredentials();
 
 const currentlyPlaying = new Map();
 const currentlySubscribed = new Map();
@@ -21,7 +18,7 @@ let maps = {
   stopAllMap: new Map()
 };
 
-initializeMappings(username, password).then(midiMaps => {
+getMappings().then(midiMaps => {
   maps = midiMaps;
   Max.post('Loaded MIDI mappings');
 
@@ -43,7 +40,7 @@ initializeMappings(username, password).then(midiMaps => {
 
   // Listen for reload
   Max.addHandler('reload', () => {
-    initializeMappings(username, password).then(midiMaps => {
+    getMappings().then(midiMaps => {
       maps = midiMaps;
       Max.post('Reloaded MIDI mappings');
     });
@@ -55,7 +52,7 @@ async function runEffect(url, payload, method) {
   return await fetch(url, {
     method: method || 'POST',
     headers: {
-      'Authorization': 'Basic ' + base64.encode(username + ':' + password)
+      'Authorization': getAuthHeader()
     },
     body
   });
